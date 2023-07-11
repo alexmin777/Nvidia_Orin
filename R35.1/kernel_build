@@ -1,0 +1,14 @@
+./nvbuild.sh -o $PWD/kernel_out
+
+sudo cp kernel_out/drivers/gpu/nvgpu/nvgpu.ko /home/hz/workspace/R35.1/Linux_for_Tegra/rootfs/usr/lib/modules/5.10.104-tegra/kernel/drivers/gpu/nvgpu/nvgpu.ko
+sudo cp kernel_out/arch/arm64/boot/dts/nvidia/* /home/hz/workspace/R35.1/Linux_for_Tegra/kernel/dtb/
+sudo cp kernel_out/arch/arm64/boot/Image /home/hz/workspace/R35.1/Linux_for_Tegra/kernel/
+
+
+sudo ./flash.sh jetson-agx-orin-devkit mmcblk0p1
+
+sudo ./flash.sh  -k kernel-dtb  jetson-agx-orin-devkit mmcblk0p1
+
+sudo ./flash.sh -r -k A_kernel-dtb jetson-agx-orin-devkit mmcblk0p1
+
+scp kernel_out/arch/arm64/boot/dts/nvidia/tegra234-p3701-0000-p3737-0000.dtb alex@192.168.137.83:~/alex
