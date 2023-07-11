@@ -1,0 +1,22 @@
+--- kernel/kernel-5.10/arch/arm64/boot/dts/nvidia/tegra194-p2888.dtsi	2022-08-11 11:15:28.000000000 +0800
++++ kernel/kernel-5.10/arch/arm64/boot/dts/nvidia/tegra194-p2888.dtsi	2022-09-23 10:53:06.000000000 +0800
+@@ -75,7 +75,7 @@
+ 
+ 		/* SDMMC1 (SD/MMC) */
+ 		mmc@3400000 {
+-			cd-gpios = <&gpio TEGRA194_MAIN_GPIO(A, 0) GPIO_ACTIVE_LOW>;
++//			cd-gpios = <&gpio TEGRA194_MAIN_GPIO(A, 0) GPIO_ACTIVE_LOW>;
+ 		};
+ 
+ 		/* SDMMC4 (eMMC) */
+--- kernel/kernel-5.10/scripts/dtc/include-prefixes/arm64/nvidia/tegra194-p2888.dtsi	2022-08-11 11:15:28.000000000 +0800
++++ kernel/kernel-5.10/scripts/dtc/include-prefixes/arm64/nvidia/tegra194-p2888.dtsi	2022-09-23 10:53:06.000000000 +0800
+@@ -75,7 +75,7 @@
+ 
+ 		/* SDMMC1 (SD/MMC) */
+ 		mmc@3400000 {
+-			cd-gpios = <&gpio TEGRA194_MAIN_GPIO(A, 0) GPIO_ACTIVE_LOW>;
++//			cd-gpios = <&gpio TEGRA194_MAIN_GPIO(A, 0) GPIO_ACTIVE_LOW>;
+ 		};
+ 
+ 		/* SDMMC4 (eMMC) */
