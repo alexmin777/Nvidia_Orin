@@ -49,7 +49,7 @@
 					 * GMSL1:  gmsl1
 					 * Null :  unused
 					 */
-					gmsl-mode = "gmsl2-6gbps","unused","unused","unused";
+					gmsl-mode = "gmsl2-6gbps","gmsl2-6gbps","unused","unused";
 					/* Deser send mipi data to soc's phymode
 					 * DPHY or CPHY
 					 */
@@ -71,13 +71,7 @@
 					reg = <0x42>;	//0x42
 					nvidia,gmsl-dser-device = <&dser>;
 				};
-#if 0
-				ser_b: max9295_b@60 {
-					compatible = "nvidia,max9295";
-					reg = <0x60>;	//0x60
-					nvidia,gmsl-dser-device = <&dser>;
-				};
-#endif
+
 				ar0233_a@1b {
 					def-addr = <0x10>;
 					/* Define any required hw resources needed by driver */
@@ -90,20 +84,7 @@
 					nvidia,gmsl-dser-device = <&dser>;
 					nvidia,gmsl-ser-prim-device = <&ser_prim>;
 				};
-#if 0
-				ar0233_c@1c {
-					def-addr = <0x10>;
-					/* Define any required hw resources needed by driver */
-					/* ie. clocks, io pins, power sources */
-					clocks = <&bpmp_clks TEGRA234_CLK_EXTPERIPH1>,
-							<&bpmp_clks TEGRA234_CLK_EXTPERIPH1>;
-					clock-names = "extperiph1", "pllp_grtba";
-					mclk = "extperiph1";
-					nvidia,gmsl-ser-device = <&ser_b>;
-					nvidia,gmsl-dser-device = <&dser>;
-					nvidia,gmsl-ser-prim-device = <&ser_prim>;
-				};
-#endif
+
 			};
 
 		};

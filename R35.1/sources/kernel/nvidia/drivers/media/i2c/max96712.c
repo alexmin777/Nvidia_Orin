@@ -4525,7 +4525,7 @@ static int max96712_probe(struct i2c_client *client,
 		dev_err(&client->dev, "unable to parse dt\n");
 		return -EFAULT;
 	}
-    writeParamsMAX96712.MipiSettings.mipiSpeed = 5;
+    writeParamsMAX96712.MipiSettings.mipiSpeed = 8;
 	writeParamsMAX96712.MipiSettings.phyMode = priv->ctx.phyMode;
 	nvmStatus=Doinit(priv,writeParamsMAX96712);
     printk(KERN_ERR "mipiSpeed=%d\n",writeParamsMAX96712.MipiSettings.mipiSpeed);

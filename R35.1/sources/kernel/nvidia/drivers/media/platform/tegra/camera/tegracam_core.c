@@ -141,6 +141,7 @@ int tegracam_device_register(struct tegracam_device *tc_dev)
 		return -EFAULT;
 	}
 
+	printk("camera_common_initialize\r\n");
 	err = camera_common_initialize(s_data, tc_dev->name);
 	if (err) {
 		dev_err(dev, "Failed to initialize %s\n", tc_dev->name);
