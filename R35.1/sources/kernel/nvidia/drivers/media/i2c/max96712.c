@@ -3699,6 +3699,7 @@ MAX96712SetDefaults(
         return status;
     }
 
+
     status = GMSL2PHYOptimization(priv);
     if (status != WICRI_STATUS_OK) {
         return status;
@@ -3711,6 +3712,7 @@ MAX96712SetDefaults(
     if (status != WICRI_STATUS_OK) {
         return status;
     }
+
 
     for (i = 0; i < MAX96712_MAX_NUM_LINK; i++) {
         if (MAX96712_IS_GMSL_LINK_SET(priv->ctx.linkMask, i)) {
@@ -3758,7 +3760,6 @@ MAX96712SetDefaults(
             return status;
         }
     }
-
     return WICRI_STATUS_OK;
 }
 EXPORT_SYMBOL(MAX96712SetDefaults);
@@ -4220,14 +4221,14 @@ Doinit(
         LOG_ERROR("MAX96712: MAX96712SetDefaults failed with NvMedia error %d", (int32_t)status);
         return status;
     }
-	msleep(50);
+    msleep(50);
 
     /* Get deserializer revision */
     LOG_INFO("Get deserializer revision\n");
     status = MAX96712ReadParameters(priv,
-                                       READ_PARAM_CMD_MAX96712_REV_ID,
-                                       sizeof(readParamsMAX96712.revision),
-                                       &readParamsMAX96712);
+                                    READ_PARAM_CMD_MAX96712_REV_ID,
+                                    sizeof(readParamsMAX96712.revision),
+                                    &readParamsMAX96712);
     if (status != WICRI_STATUS_OK) {
         LOG_ERROR("MAX96712: MAX96712ReadParameters(READ_PARAM_CMD_MAX96712_REV_ID) failed with NvMedia error %d", status);
         return status;
@@ -4249,8 +4250,7 @@ Doinit(
         LOG_ERROR("MAX96712: MAX96712WriteParameters(WRITE_PARAM_CMD_MAX96712_SET_MIPI) failed with NvMedia error %d", (int32_t)status);
         return status;
     }
-	msleep(20);
-
+    msleep(20);
 
     return WICRI_STATUS_OK;
 }
@@ -4525,15 +4525,17 @@ static int max96712_probe(struct i2c_client *client,
 		dev_err(&client->dev, "unable to parse dt\n");
 		return -EFAULT;
 	}
+
     writeParamsMAX96712.MipiSettings.mipiSpeed = 8;
-	writeParamsMAX96712.MipiSettings.phyMode = priv->ctx.phyMode;
-	nvmStatus=Doinit(priv,writeParamsMAX96712);
+    writeParamsMAX96712.MipiSettings.phyMode = priv->ctx.phyMode;
+    nvmStatus=Doinit(priv,writeParamsMAX96712);
     printk(KERN_ERR "mipiSpeed=%d\n",writeParamsMAX96712.MipiSettings.mipiSpeed);
-	if (nvmStatus!=WICRI_STATUS_OK)
-	{
-		LOG_ERROR("MAX96712:Doinit Failed!");
+    if (nvmStatus!=WICRI_STATUS_OK)
+    {
+        LOG_ERROR("MAX96712:Doinit Failed!");
         return nvmStatus;
-	}
+    }
+
 	mutex_init(&(priv->lock));
 
 	dev_set_drvdata(&client->dev, priv);

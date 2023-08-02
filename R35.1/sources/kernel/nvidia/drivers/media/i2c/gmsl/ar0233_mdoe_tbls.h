@@ -1,0 +1,40 @@
+#ifndef AR0233_MODE_TBLS_H_
+#define AR0233_MODE_TBLS_H_
+
+#include <media/camera_common.h>
+
+#define AR0233_TABLE_WAIT_MS	0xff00
+#define AR0233_TABLE_END	0xff01
+#define AR0233_MAX_RETRIES	3
+#define AR0233_WAIT_MS_STOP	1
+#define AR0233_WAIT_MS_START	30
+#define AR0233_WAIT_MS_STREAM	210
+#define AR0233_GAIN_TABLE_SIZE  255
+
+#define ar0233_reg struct reg_16
+
+static const u32 ctrl_cid_list[] = {
+	TEGRA_CAMERA_CID_GAIN,
+	TEGRA_CAMERA_CID_EXPOSURE,
+	TEGRA_CAMERA_CID_EXPOSURE_SHORT,
+	TEGRA_CAMERA_CID_FRAME_RATE,
+	TEGRA_CAMERA_CID_HDR_EN,
+	TEGRA_CAMERA_CID_SENSOR_MODE_ID,
+};
+
+enum {
+	//AR0233_MODE_2048X1280_CROP_30FPS,
+	AR0233_MODE_1920X1080_CROP_30FPS_HDR,
+	AR0233_MODE_START_STREAM,
+	AR0233_MODE_STOP_STREAM,
+};
+
+static const int ar0233_fps[] = {
+    30,
+};
+
+static const struct camera_common_frmfmt ar0233_frmfmt[] = {
+    {{1920, 1080}, ar0233_fps, 1, 0, AR0233_MODE_1920X1080_CROP_30FPS_HDR},
+};
+
+#endif /* AR0233_MODE_TBLS_H_ */

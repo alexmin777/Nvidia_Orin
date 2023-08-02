@@ -44,6 +44,8 @@
 				dser: max96712@6b {
 					compatible = "maxim,max96712";
 					reg = <0x6b>;
+					/* CSI-MODE:4x2,2x4,1x4a_22,1x4b_22
+					 */
 					csi-mode = "2x4";
 					/* GMSL2:  gmsl2-6gbps,gmsl2-3gbps 
 					 * GMSL1:  gmsl1

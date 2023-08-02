@@ -898,8 +898,6 @@ CONFIG_NV_VIDEO_AR0233=m
 ######alex_add########################################
 CONFIG_SER_VIDEOMAX9295B=m
 CONFIG_DES_VIDEOMAX96712=m
-CONFIG_SERIALIZER_DRIVER=m
-CONFIG_DESERIALIZER_DRIVER=m
 CONFIG_VIDEO_DRIVER_AR0233=m
 ######################################################
 #CONFIG_NV_VIDEO_IMX390=m
