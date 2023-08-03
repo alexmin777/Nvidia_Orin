@@ -5,9 +5,9 @@
 #define DEBUG_LOG_LEVEL 1
 
 #if DEBUG_LOG_LEVEL > 0
-#define MAX9295_LOGE(fmt, args...) printk(KERN_INFO "[MAX9295] " fmt, ##args)
+#define MAX9295_LOG(fmt, args...) printk(KERN_INFO "[MAX9295] " fmt, ##args)
 #else
-#define MAX9295_LOGE(fmt, args...)
+#define MAX9295_LOG(fmt, args...)
 #endif
 
 #define MAX9295_ERR(fmt, args...) printk(KERN_ERR "[MAX9295] " fmt, ##args)
@@ -35,7 +35,7 @@ static int max9295_write_reg(struct device *dev, u16 addr, u8 val)
 
 	err = regmap_write(priv->regmap, addr, val);
 	if (err)
-		MAX9295_LOGE("%s:i2c write failed, 0x%x = %x\n", __func__, addr, val);
+		MAX9295_LOG("%s:i2c write failed, 0x%x = %x\n", __func__, addr, val);
 
 	/* delay before next i2c command as required for SERDES link */
 	usleep_range(100, 110);
@@ -51,7 +51,7 @@ static int max9295_read_reg(struct device *dev, u16 addr, u8 *val)
 
 	err = regmap_read(priv->regmap, addr, &reg_val);
 	if (err)
-		MAX9295_LOGE("%s:i2c write failed, 0x%x = %x\n", __func__, addr, reg_val);
+		MAX9295_LOG("%s:i2c write failed, 0x%x = %x\n", __func__, addr, reg_val);
 
 	/* delay before next i2c command as required for SERDES link */
 	usleep_range(100, 110);
@@ -69,7 +69,7 @@ int max9295_set_proxy_addr(struct device *dev, struct gmsl_link_ctx *g_ctx)
 	//set serializer proxy addr
 	if (priv->def_addr != g_ctx->ser_reg)
 	{
-		MAX9295_LOGE("max9295 set serializer proxy addr!\n");
+		MAX9295_LOG("max9295 set serializer proxy addr!\n");
 		err = max9295_write_reg(dev, MAX9295_DEV_ADDR, (g_ctx->ser_reg << 1));
 		if (err) {
 			MAX9295_ERR("max9295 set serializer proxy addr failed!\n");
@@ -80,7 +80,7 @@ int max9295_set_proxy_addr(struct device *dev, struct gmsl_link_ctx *g_ctx)
 	//todo: set sensor proxy addr
 	// if (g_ctx->sdev_reg != g_ctx->sdev_def)
 	// {
-	// 	MAX9295_LOGE("max9295 set sensor proxy addr!\n");
+	// 	MAX9295_LOG("max9295 set sensor proxy addr!\n");
 	// 	err = max9295_write_reg(dev, MAX9295_DEV_ADDR, (g_ctx->ser_reg << 1));
 	// 	if (err)
 	// 		MAX9295_ERR("max9295 set sensor proxy addr failed!\n");
@@ -102,7 +102,7 @@ int max9295_check_chip_ID(struct device *dev)
 	}
 
 	if (CHIP_MAX9295B == val)
-		MAX9295_LOGE("max9295 chip ID is correct!\n");
+		MAX9295_LOG("max9295 chip ID is correct!\n");
 	else {
 		MAX9295_ERR("max9295 chip ID is wrong!\n");
 		err = -EINVAL;
@@ -126,7 +126,7 @@ int max9295_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	int ret = 0;
 	struct device_node *np = client->dev.of_node;
 
-	MAX9295_LOGE("max9295 start probe!\n");
+	MAX9295_LOG("max9295 start probe!\n");
 
 	priv = devm_kzalloc(&client->dev, sizeof(struct max9295), GFP_KERNEL);
 	if (!priv) {
@@ -142,7 +142,7 @@ int max9295_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	}
 
 	if (of_get_property(np, "is-prim-ser", NULL)) {
-		MAX9295_LOGE("max9295 primitive device tree node!\n");
+		MAX9295_LOG("max9295 primitive device tree node!\n");
 		if (prim_priv__) {
 			MAX9295_ERR("max9295 prim serializer already exist!\n");
 			return -EEXIST;
@@ -159,20 +159,15 @@ int max9295_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	dev_set_drvdata(&client->dev, priv);
 
-	MAX9295_LOGE("max9295 probe successful!\n");
+	MAX9295_LOG("max9295 probe successful!\n");
 
 	return ret;
 }
 
 static int max9295_remove(struct i2c_client *client)
 {
-	struct max9295 *priv;
-
-	if (client != NULL) {
-		priv = dev_get_drvdata(&client->dev);
-		i2c_unregister_device(client);
+	if (client != NULL)
 		client = NULL;
-	}
 
 	return 0;
 }
