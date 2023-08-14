@@ -29,6 +29,7 @@
 struct ar0233 {
 	struct i2c_client	*i2c_client;
 	const struct i2c_device_id *id;
+	u32	frame_length;
 
 	//use for v4l2 driver
 	struct v4l2_subdev	*subdev;
@@ -78,6 +79,11 @@ static int ar0233_set_exposure(struct tegracam_device *tc_dev, s64 val)
 
 static int ar0233_set_frame_rate(struct tegracam_device *tc_dev, s64 val)
 {
+	struct ar0233 *priv = (struct ar0233 *)tegracam_get_privdata(tc_dev);
+
+	/* fixed 30fps */
+	priv->frame_length = 1346;
+
 	return 0;
 }
 
@@ -98,10 +104,7 @@ static struct tegracam_ctrl_ops ar0233_ctrl_ops = {
 
 static int ar0233_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
-
 	AR0233_LOG("%s:\n", __func__);
-	dev_dbg(&client->dev, "%s:\n", __func__);
 
 	return 0;
 }
@@ -535,9 +538,7 @@ static int ar0233_probe(struct i2c_client *client, const struct i2c_device_id *i
     priv->tc_dev = tc_dev;
     priv->s_data = tc_dev->s_data;
     priv->subdev = &tc_dev->s_data->subdev;
-	AR0233_LOG("set tegra camera private data.\n");
     tegracam_set_privdata(tc_dev, (void*)priv);
-	AR0233_LOG("set tegra camera private data down.\n");
 
     err = ar0233_board_setup(priv);
 	if (err) {
@@ -555,19 +556,42 @@ static int ar0233_probe(struct i2c_client *client, const struct i2c_device_id *i
 		AR0233_ERR("init deserialzer failed\n");
 		return err;
 	}
+	AR0233_LOG("init deserializer success\n");
 
 	err = init_serializer(priv->ser_prim_dev, &priv->g_ctx);
 	if (err) {
 		AR0233_ERR("init serialzer failed\n");
 		return err;
 	}
+	AR0233_LOG("init serializer success\n");
 
 	err = setup_deserializer_link(priv->dser_dev, &priv->g_ctx);
 	if (err) {
 		AR0233_ERR("deserializer set up link failed\n");
 		return err;
 	}
+
+	err = set_serializer_ctl(priv->ser_dev, &priv->g_ctx);
+	if (err) {
+		AR0233_ERR("set serializer control failed\n");
+		return err;
+	}
+
+	err = set_deserializer_ctl(priv->dser_dev, &priv->g_ctx);
+	if (err) {
+		AR0233_ERR("set serializer control failed\n");
+		return err;
+	}
+
+	AR0233_LOG("GMSL init and link success\n");
 /*********************************************************************************/
+
+	err = tegracam_v4l2subdev_register(tc_dev, true);
+	if (err) {
+		dev_err(dev, "tegra camera subdev registration failed\n");
+		return err;
+	}
+
 	return 0;
 }
 

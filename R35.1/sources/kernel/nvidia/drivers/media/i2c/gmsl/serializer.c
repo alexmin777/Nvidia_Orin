@@ -16,6 +16,7 @@
 #define SER_ERR(fmt, args...) printk(KERN_ERR "[Serializer] " fmt, ##args)
 
 
+/**********************************init serializer*****************************************************/
 int set_dev_proxy_addr(struct device *dev, struct gmsl_link_ctx *g_ctx)
 {
     int err = 0;
@@ -68,6 +69,100 @@ int init_serializer(struct device *dev, struct gmsl_link_ctx *g_ctx)
     err = set_dev_proxy_addr(dev, g_ctx);
 	if (err) {
 		SER_ERR("Change serializer address failed\n");
+		goto done;
+	}
+
+done:
+    return err;
+}
+/******************************************************************************************************/
+
+
+/**********************************set serializer control***********************************************/
+int enable_sensor_work(struct device *dev)
+{
+    int err = 0;
+
+#ifdef SER_MAX9295B 
+    err = max9295_reset_cam(dev);
+#endif
+
+    return err;
+}
+
+int mipi_rx_phy_set(struct device *dev, struct gmsl_link_ctx *g_ctx)
+{
+    int err = 0;
+
+#ifdef SER_MAX9295B 
+    err = max9295_mipi_rx_phy_set(dev, g_ctx);
+#endif
+
+    return err;
+}
+
+int mipi_rx_port_set(struct device *dev, struct gmsl_link_ctx *g_ctx)
+{
+    int err = 0;
+
+#ifdef SER_MAX9295B 
+    err = max9295_mipi_rx_port_set(dev, g_ctx);
+#endif
+
+    return err;
+}
+
+int dt_route_to_pipeline(struct device *dev, struct gmsl_link_ctx *g_ctx)
+{
+    int err = 0;
+
+#ifdef SER_MAX9295B 
+    err = max9295_dt_route_to_pipeline(dev, g_ctx);
+#endif
+
+    return err;  
+}
+
+int set_serializer_ctl(struct device *dev, struct gmsl_link_ctx *g_ctx)
+{
+    int err = 0;
+
+    err = enable_sensor_work(dev);
+	if (err) {
+		SER_ERR("Enable sensor work failed\n");
+		goto done;
+	}
+
+    err = mipi_rx_phy_set(dev, g_ctx);
+	if (err) {
+		SER_ERR("MIPI RX phy set failed\n");
+		goto done;
+	}
+
+    err = mipi_rx_port_set(dev, g_ctx);
+	if (err) {
+		SER_ERR("MIPI RX port set failed\n");
+		goto done;
+	}
+    
+    err = dt_route_to_pipeline(dev, g_ctx);
+	if (err) {
+		SER_ERR("MIPI RX port set failed\n");
+		goto done;
+	}
+
+done:
+    return err;
+}
+/******************************************************************************************************/
+
+int set_serializer_cam(struct device *dev)
+{
+    int err = 0;
+
+    err = enable_sensor_work(dev);
+	if (err) {
+		SER_ERR("Enable sensor work failed\n");
 		goto done;
 	}
 

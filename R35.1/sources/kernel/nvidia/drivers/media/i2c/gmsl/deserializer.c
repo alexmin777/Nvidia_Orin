@@ -131,6 +131,7 @@ int setup_deserializer_link(struct device *dev, struct gmsl_link_ctx *g_ctx)
         first_init = false;
     }
 
+    DES_LOG("deserilaizer_enable_link!\n");
     err = deserilaizer_enable_link(dev, g_ctx);
 	if (err) {
 		DES_ERR("Enable deserializer link failed\n");
@@ -154,8 +155,75 @@ int setup_deserializer_link(struct device *dev, struct gmsl_link_ctx *g_ctx)
 		DES_ERR("Deserializer link locked failed\n");
 		goto done;
 	}
-
 done:
     return err;
 }
 /**********************************************************************************************/
+int video_pipe_selection(struct device *dev, struct gmsl_link_ctx *g_ctx)
+{
+    int err = 0;
+#ifdef DER_MAXIM96712 
+    err = maxim96712_video_pipe_selection(dev, g_ctx);
+#endif
+
+    return err;
+}
+
+int MIPI_phy_set(struct device *dev, u8 speed)
+{
+    int err = 0;
+#ifdef DER_MAXIM96712 
+    err = maxim96712_MIPI_phy_set(dev, speed);
+#endif
+
+    return err;
+}
+
+int video_map_to_mipi_ctl(struct device *dev, struct gmsl_link_ctx *g_ctx)
+{
+    int err = 0;
+#ifdef DER_MAXIM96712 
+    err = maxim96712_video_map_to_mipi_ctl(dev, g_ctx);
+#endif
+
+    return err;
+}
+/**********************************set deserializer control***********************************************/
+int set_deserializer_ctl(struct device *dev, struct gmsl_link_ctx *g_ctx)
+{
+    int err = 0;
+    u8 mipi_speed = 0; 
+
+    err = video_pipe_selection(dev, g_ctx);
+	if (err) {
+		DES_ERR("Deserializer select video pipe failed\n");
+		goto done;
+	}
+
+    mipi_speed = 4;
+    err = MIPI_phy_set(dev, mipi_speed);
+	if (err) {
+		DES_ERR("Deserializer MIPI PHY set failed\n");
+		goto done;
+	}
+
+    set_deserializer_default(dev);
+
+    err = video_map_to_mipi_ctl(dev, g_ctx);
+	if (err) {
+		DES_ERR("Deserializer MIPI PHY set failed\n");
+		goto done;
+	}  
+done:
+    return err;
+}
+/*******************************************************************************************************/
+
+int set_deserializer_default(struct device *dev)
+{
+    int err = 0;
+
+    test_default(dev);
+
+    return err;
+}

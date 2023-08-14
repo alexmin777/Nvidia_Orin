@@ -42,5 +42,19 @@ int init_deserializer(struct device *dev, struct gmsl_link_ctx *g_ctx);
  * @return  0 for success, or -1 otherwise.
  */
 int setup_deserializer_link(struct device *dev, struct gmsl_link_ctx *g_ctx);
+
+/**
+ * @brief  set deserializer control.
+ *
+ * To be called by sensor client driver.
+ *
+ * @param  [in]  dev            The deserializer device handle.
+ * @param  [in]  g_ctx          The @ref gmsl_link_ctx structure handle.
+ *
+ * @return  0 for success, or -1 otherwise.
+ */
+int set_deserializer_ctl(struct device *dev, struct gmsl_link_ctx *g_ctx);
 /**********************************************************************************************/
+
+int set_deserializer_default(struct device *dev);
 #endif

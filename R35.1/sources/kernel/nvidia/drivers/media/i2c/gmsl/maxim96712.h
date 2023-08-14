@@ -6,12 +6,14 @@
 #include "deserializer.h"
 
 #define MAX96712_MAX_NUM_LINK                   4
+#define MAX96712_NUM_VIDEO_PIPELINES            8
+#define MAX96712_MAX_NUM_PHY                    4
 
 /* data defines */
 #define MAX96712_CSI_MODE_4X2            0x1
 #define MAX96712_CSI_MODE_2X4            0x4
-#define MAX96712_CSI_MODE_1X4A_22        0x4
-#define MAX96712_CSI_MODE_1X4B_22        0x4
+#define MAX96712_CSI_MODE_1X4A_22        0x8
+#define MAX96712_CSI_MODE_1X4B_22        0x10
 
 #define MAX96712_DEV_ID                 0xA0u
 
@@ -232,6 +234,9 @@ typedef enum {
     REG_FIELD_PATGEN_CLK_SRC_PIPE_7,
 
     REG_FIELD_MIPI_OUT_CFG,
+    REG_FIELD_MIPI_PHY_EN,
+    REG_FIELD_MIPI_PHY_MAP_A,
+    REG_FIELD_MIPI_PHY_MAP_B,
     REG_FIELD_T_T3_PREBEGIN,
     REG_FIELD_T_T3_POST_PREP,
     REG_FIELD_DEV_REV,
@@ -331,6 +336,11 @@ typedef enum {
 
     REG_FIELD_CSI_MIPI_OUT_EN,
 
+    REG_FIELD_PHY0_SPEED,
+    REG_FIELD_PHY1_SPEED,
+    REG_FIELD_PHY2_SPEED,
+    REG_FIELD_PHY3_SPEED,
+   
     REG_FIELD_MAX,
 } RegBitField;
 
@@ -539,6 +549,9 @@ static const RegBitFieldProp regBitFieldProps[REG_FIELD_MAX] = {
     [REG_FIELD_PATGEN_CLK_SRC_PIPE_7]    = {.regAddr = 0x02BC, .msbPos = 7, .lsbPos = 7},
 
     [REG_FIELD_MIPI_OUT_CFG]             = {.regAddr = 0x08A0, .msbPos = 5, .lsbPos = 0},
+    [REG_FIELD_MIPI_PHY_EN]              = {.regAddr = 0x08A2, .msbPos = 7, .lsbPos = 4},
+    [REG_FIELD_MIPI_PHY_MAP_A]           = {.regAddr = 0x08A3, .msbPos = 7, .lsbPos = 0},
+    [REG_FIELD_MIPI_PHY_MAP_B]           = {.regAddr = 0x08A4, .msbPos = 7, .lsbPos = 0},
     [REG_FIELD_T_T3_PREBEGIN]            = {.regAddr = 0x08AD, .msbPos = 5, .lsbPos = 0},
     [REG_FIELD_T_T3_POST_PREP]           = {.regAddr = 0x08AE, .msbPos = 6, .lsbPos = 0},
     [REG_FIELD_DEV_REV]                  = {.regAddr = 0x004C, .msbPos = 3, .lsbPos = 0},
@@ -631,6 +644,11 @@ static const RegBitFieldProp regBitFieldProps[REG_FIELD_MAX] = {
     [REG_FIELD_ENABLE_LOCK]              = {.regAddr = 0x0005, .msbPos = 7, .lsbPos = 7},
     [REG_FIELD_ENABLE_ERRB]              = {.regAddr = 0x0005, .msbPos = 6, .lsbPos = 6},
     [REG_FIELD_CSI_MIPI_OUT_EN]          = {.regAddr = 0x040B, .msbPos = 1, .lsbPos = 1},
+
+    [REG_FIELD_PHY0_SPEED]               = {.regAddr = 0x0415, .msbPos = 4, .lsbPos = 0},
+    [REG_FIELD_PHY1_SPEED]               = {.regAddr = 0x0418, .msbPos = 4, .lsbPos = 0},
+    [REG_FIELD_PHY2_SPEED]               = {.regAddr = 0x041B, .msbPos = 4, .lsbPos = 0},
+    [REG_FIELD_PHY3_SPEED]               = {.regAddr = 0x041E, .msbPos = 4, .lsbPos = 0},
 };
 /****************************************************************************************************/
 
@@ -661,6 +679,21 @@ typedef enum {
     MAX96712_LINK_LOCK_GMSL2,
     MAX96712_LINK_LOCK_MAX,
 } LinkLockTypeMAX96712;
+
+typedef enum {
+    MAX96712_I2CPORT_INVALID,
+    MAX96712_I2CPORT_0,
+    MAX96712_I2CPORT_1,
+    MAX96712_I2CPORT_2,
+} I2CPortMAX96712;
+
+typedef enum {
+    MIPI_CSI_Controller_0 = 0,
+    MIPI_CSI_Controller_1,
+    MIPI_CSI_Controller_2,
+    MIPI_CSI_Controller_3,
+    MIPI_CSI_Controller_MAX,
+} MIPICSIController;
 /*
  * Utility macro used to call sAccessRegFieldArray() and return if status is not OK.
  * The macro expects the following variables to be available: priv, status
@@ -710,8 +743,11 @@ typedef struct {
     RegBitFieldQ regBitFieldQ;
     u8 csi_mode;
     u8 linkMask;
+    u8 phylines[MAX96712_MAX_NUM_PHY];
     GMSLMode gmslMode[MAX96712_MAX_NUM_LINK];
-    PHYMode phyMode; 
+    PHYMode phyMode;
+    I2CPortMAX96712 i2cPort;
+    MIPICSIController txPort;
     int reset_gpio;
     bool power_status;
 } max96712;
@@ -719,9 +755,15 @@ typedef struct {
 
 void maxim96712_power_on(struct device *dev);
 int maxim96712_dev_info(struct device *dev);
+int maxim96712_set_i2c_ctl_port(max96712 *priv);
 int maxim96712_get_enabled_links(struct device *dev, int *link_status);
 int maxim96712_enable_link(struct device *dev, struct gmsl_link_ctx *g_ctx);
 int maxim96712_set_link_mode(struct device *dev, struct gmsl_link_ctx *g_ctx);
 int maxim96712_one_shot_reset(struct device *dev, struct gmsl_link_ctx *g_ctx);
 int maxim96712_check_link_lock(struct device *dev, struct gmsl_link_ctx *g_ctx);
+int maxim96712_video_pipe_selection(struct device *dev, struct gmsl_link_ctx *g_ctx);
+int maxim96712_MIPI_phy_set(struct device *dev, u8 speed);
+int maxim96712_video_map_to_mipi_ctl(struct device *dev, struct gmsl_link_ctx *g_ctx);
+
+void test_default(struct device *dev);
 #endif /* __MAXIM96712_H__ */

@@ -102,6 +102,33 @@ struct gmsl_link_ctx {
 	struct device *s_dev;   /**< Sensor device handle. */
 };
 
+typedef enum {
+    LINK_UNLOCKED,
+    LINK_LOCKED,
+    LINK_LOCK_INVALID,
+} SensorLinkCsiLanes;
+
+typedef enum {
+    CSI_4_LANES,
+    CSI_2_LANES_A,
+    CSI_2_LANES_B,
+    CSI_2_LANES_A_B,
+    CSI_LANES_MAX,
+} LinkLockStatus;
+
+typedef enum {
+    CSI_LINK_PORT_A,
+    CSI_LINK_PORT_B,
+    CSI_LINK_PORT_MAX,
+} LinkLockPort;
+
+typedef enum {
+    LINK_PIPELINE_X,
+    LINK_PIPELINE_Y,
+	LINK_PIPELINE_Z,
+	LINK_PIPELINE_U,
+    LINK_PIPELINE_MAX,
+} LinkPipelinePort;
 /** @} */
 
 #endif  /* __GMSL_LINK_H__ */

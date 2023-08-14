@@ -51,7 +51,7 @@
 					 * GMSL1:  gmsl1
 					 * Null :  unused
 					 */
-					gmsl-mode = "gmsl2-6gbps","gmsl2-6gbps","unused","unused";
+					gmsl-mode = "gmsl2-6gbps","unused","unused","unused";
 					/* Deser send mipi data to soc's phymode
 					 * DPHY or CPHY
 					 */

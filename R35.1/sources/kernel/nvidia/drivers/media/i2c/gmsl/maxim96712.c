@@ -21,6 +21,16 @@
 
 DEFINE_MUTEX(__maxim96712_mutex);
 
+
+static bool IsGMSL2Mode(const GMSLMode mode)
+{
+    if ((GMSL2_MODE_6GBPS == mode) ||   \
+        (GMSL2_MODE_3GBPS == mode)) {
+        return true;
+    } else {
+        return false;
+    }
+}
 /******************************************use for i2c R/W************************************************************/
 static NvMediaStatus ReadUint8(struct regmap *i2cProgrammer, uint16_t addr, uint8_t *val)
 {
@@ -43,7 +53,7 @@ static NvMediaStatus WriteUint8(struct regmap *i2cProgrammer, uint16_t addr, uin
     int err = 0;
 	err = regmap_write(i2cProgrammer, addr, val);
     MAX96712_LOG("0x%04x,0x%02x ",addr,val);
-    if (err!=0)
+    if (err != 0)
     {
         MAX96712_ERR("i2c Write error! addr:%04x val:%02x",addr,val);
         return WICRI_STATUS_BAD_PARAMETER;
@@ -349,6 +359,7 @@ done:
 }
 EXPORT_SYMBOL(maxim96712_dev_info);
 
+
 int maxim96712_get_enabled_links(struct device *dev, int *link_status)
 {
     max96712 *priv = dev_get_drvdata(dev);
@@ -378,7 +389,7 @@ int maxim96712_enable_link(struct device *dev, struct gmsl_link_ctx *g_ctx)
         if (GMSL_MODE_UNUSED == priv->gmslMode[i]) {
             ADD_ONE_REG_FIELD_RET_ERR(REG_FIELD_LINK_EN_A + i, 0u);
         } else {
-            ADD_ONE_REG_FIELD_RET_ERR(REG_FIELD_LINK_EN_A + i,  \
+            ADD_ONE_REG_FIELD_RET_ERR(REG_FIELD_LINK_EN_A + i,  
                         MAX96712_IS_GMSL_LINK_SET(serdes_csi_link, i) ? 1u : 0u);
         }
     }
@@ -395,29 +406,28 @@ int maxim96712_set_link_mode(struct device *dev, struct gmsl_link_ctx *g_ctx)
     int serdes_csi_link = g_ctx->serdes_csi_link;
     int i;
 
-    //Set the link GMSL1 or GMSL2 mode
+    // Set the link GMSL1 or GMSL2 mode
     ClearRegFieldQ(priv);
     for (i = 0 ; i < MAX96712_MAX_NUM_LINK; i++) {
         if (MAX96712_IS_GMSL_LINK_SET(serdes_csi_link, i)) {
-            MAX96712_LOG("Set link mode for port %d\n", i);
-            if (GMSL_MODE_UNUSED != priv->gmslMode[i]) {
-                ADD_ONE_REG_FIELD_RET_ERR(REG_FIELD_LINK_GMSL2_A + i,   \
-                                           (GMSL1_MODE == priv->gmslMode[i]) ? 0u : 1u);
+            if (IsGMSL2Mode(priv->gmslMode[i])) {
+                ADD_ONE_REG_FIELD_RET_ERR(REG_FIELD_LINK_GMSL2_A + i,   
+                                           (GMSL1_MODE == priv->gmslMode[i]) ? 0u : 1u);                
             }
         }
     }
     ACCESS_REG_FIELD_RET_ERR(REG_READ_MOD_WRITE_MODE);
 
-    ///Set Link speed
+    //Set Link speed
     ClearRegFieldQ(priv);
     for (i = 0u; i < MAX96712_MAX_NUM_LINK; i++) {
         if (MAX96712_IS_GMSL_LINK_SET(serdes_csi_link, i)) {
             MAX96712_LOG("SetLinkMode: Link is set and now setting the speed for %i", i);
-            /*MAX96712_GMSL1_MODE     : 1
-            MAX96712_GMSL2_MODE_6GBPS : 2
-            MAX96712_GMSL2_MODE_3GBPS : 1*/
+            /*MAX96712_GMSL1_MODE       : 1
+              MAX96712_GMSL2_MODE_6GBPS : 2
+              MAX96712_GMSL2_MODE_3GBPS : 1*/
             if (GMSL_MODE_UNUSED != priv->gmslMode[i]) {
-                ADD_ONE_REG_FIELD_RET_ERR(REG_FIELD_RX_RATE_PHY_A + i,  \
+                ADD_ONE_REG_FIELD_RET_ERR(REG_FIELD_RX_RATE_PHY_A + i,  
                                           (GMSL2_MODE_6GBPS == priv->gmslMode[i]) ? 2u : 1u);
             }
         }
@@ -488,9 +498,190 @@ int maxim96712_check_link_lock(struct device *dev, struct gmsl_link_ctx *g_ctx)
     return status;
 }
 EXPORT_SYMBOL(maxim96712_check_link_lock);
+
+int maxim96712_video_pipe_selection(struct device *dev, struct gmsl_link_ctx *g_ctx)
+{
+    max96712 *priv = dev_get_drvdata(dev);
+    NvMediaStatus status = WICRI_STATUS_ERROR;
+    //LinkPipelinePort ser_pipe;
+    int i;
+
+    //PipeY --> LineA --> Pipe0
+    for (i = 0; i < MAX96712_MAX_NUM_LINK; i++) {
+        if (MAX96712_IS_GMSL_LINK_SET(g_ctx->serdes_csi_link, i)) {
+            if (IsGMSL2Mode(priv->gmslMode[i])) {
+                ACCESS_ONE_REG_FIELD_RET_ERR(REG_FIELD_VIDEO_PIPE_SEL_0 + i,    \
+                                            4u * i + 1, \
+                                            REG_READ_MOD_WRITE_MODE);   \
+            }            
+        }
+    }
+
+    //Turn on pipes
+    ClearRegFieldQ(priv);
+    for (i = 0; i < MAX96712_MAX_NUM_LINK; i++) {
+        if (MAX96712_IS_GMSL_LINK_SET(g_ctx->serdes_csi_link, i))
+            ADD_ONE_REG_FIELD_RET_ERR(REG_FIELD_VIDEO_PIPE_EN_0 + i, 1u);
+    }
+    ACCESS_REG_FIELD_RET_ERR(REG_READ_MOD_WRITE_MODE);
+
+    return status;
+}
+EXPORT_SYMBOL(maxim96712_video_pipe_selection);
+
+int maxim96712_MIPI_phy_set(struct device *dev, u8 speed)
+{
+    max96712 *priv = dev_get_drvdata(dev);
+    NvMediaStatus status = WICRI_STATUS_ERROR;
+    PHYMode phyMode = priv->phyMode;
+    u8 csi_mode = priv->csi_mode;
+    u8 prebegin = 0, post = 0;
+    u8 val;
+    u16 addr;
+    int i;
+
+    if ((PHY_MODE_DPHY != phyMode) && (PHY_MODE_CPHY != phyMode)) {
+        MAX96712_ERR("Invalid MIPI output phy mode\n");
+        return WICRI_STATUS_BAD_PARAMETER;
+    }
+
+    if ((speed < 1) || (speed > 25)) {
+        MAX96712_ERR("Invalid MIPI speed\n");
+        return WICRI_STATUS_BAD_PARAMETER;
+    }
+
+    //Set mipi out config
+    ACCESS_ONE_REG_FIELD_RET_ERR(REG_FIELD_MIPI_OUT_CFG, csi_mode, REG_READ_MOD_WRITE_MODE);
+
+    /* Set prebegin phase, post length and prepare for CPHY mode
+     * This is a requirement for CPHY periodic calibration */
+    if (PHY_MODE_CPHY == phyMode) {
+        if (speed == 17) {
+            /* TODO : This is a temporal solution to support the previous platform
+             * This will be updated once CPHY calibration logic in RCE updated
+             */
+            /* t3_prebegin = (63 + 1) * 7 = 448 UI
+             * Bit[6:2] = t3_post = (31 + 1) * 7 = 224 UI
+             * Bit[1:0] = t3_prepare = 86.7ns
+             */
+            prebegin = 0x3F;
+            post = 0x7F;
+        } else {
+            /* t3_prebegin = (19 + 1) * 7 = 140 UI
+             * Bit[6:2] = t3_post = (31 + 1) * 7 = 224 UI
+             * Bit[1:0] = t3_prepare = 40ns
+             */
+            prebegin = 0x13;
+            post = 0x7c;
+        }
+        ACCESS_ONE_REG_FIELD_RET_ERR(REG_FIELD_T_T3_PREBEGIN, prebegin, REG_READ_MOD_WRITE_MODE);
+        ACCESS_ONE_REG_FIELD_RET_ERR(REG_FIELD_T_T3_POST_PREP, post, REG_READ_MOD_WRITE_MODE);
+    }
+
+    /* Mapping data lanes Port A */
+    val = (csi_mode == MAX96712_CSI_MODE_4X2) ? 0x44 : 0xE4;
+    ACCESS_ONE_REG_FIELD_RET_ERR(REG_FIELD_MIPI_PHY_MAP_A, val, REG_READ_MOD_WRITE_MODE);
+
+    /* Mapping data lanes Port B */
+    val = (csi_mode == MAX96712_CSI_MODE_4X2) ? 0x44 : 0xE4;
+    ACCESS_ONE_REG_FIELD_RET_ERR(REG_FIELD_MIPI_PHY_MAP_B, val, REG_READ_MOD_WRITE_MODE);
+
+    /* Set CSI2 lane count per Phy */
+    for (i = 0; i < MAX96712_MAX_NUM_PHY; i++) {
+        val = (priv->phylines[i] -1) << 6;
+        val |= (phyMode == PHY_MODE_CPHY) ? (1 << 5) : 0;
+        addr = 0x090A + (i * 0x40);
+        MAX96712_ERR("0x090A use other interface\n");
+        WriteUint8(priv->i2cProgrammer, addr, val);
+    }
+
+    /* Put all Phys in standby mode */
+    val = 0xF0;
+    WriteUint8(priv->i2cProgrammer, 0x08a2, val);
+    //ACCESS_ONE_REG_FIELD_RET_ERR(REG_FIELD_MIPI_PHY_EN, val, REG_READ_MOD_WRITE_MODE);
+
+
+    WriteUint8(priv->i2cProgrammer, 0x1C00, 0xF4);
+    /* Set MIPI speed */
+    for (i = 0; i < MAX96712_MAX_NUM_LINK; i++) {
+        //val |= ((1 << 5) | speed);
+        val = 0x28;
+        ACCESS_ONE_REG_FIELD_RET_ERR(REG_FIELD_PHY0_SPEED + i, val, REG_READ_MOD_WRITE_MODE);
+    }
+    WriteUint8(priv->i2cProgrammer, 0x1C00, 0xF5);
+
+    /* Deskew is enabled if MIPI speed is faster than or equal to 1.5GHz */
+    if ((PHY_MODE_DPHY == phyMode) && (speed >= 15)) {
+        addr = 0x0903;
+        val = 0x97; /* enable the initial deskew with 8 * 32K UI */
+        for (i = 0; i < MAX96712_MAX_NUM_PHY; i++) {
+            addr = (addr & 0xff00) + ((addr + 0x40) & 0xff) ;
+            WriteUint8(priv->i2cProgrammer, addr, val);
+        }
+    }
+    
+    return status;
+}
+EXPORT_SYMBOL(maxim96712_MIPI_phy_set);
+
+int maxim96712_video_map_to_mipi_ctl(struct device *dev, struct gmsl_link_ctx *g_ctx)
+{
+    max96712 *priv = dev_get_drvdata(dev);
+    NvMediaStatus status = WICRI_STATUS_ERROR;
+
+    //test
+    WriteUint8(priv->i2cProgrammer, 0x090B, 0x07);
+    WriteUint8(priv->i2cProgrammer, 0x092D, 0x15);
+
+    WriteUint8(priv->i2cProgrammer, 0x090D, 0x1E);
+    WriteUint8(priv->i2cProgrammer, 0x090E, 0x1E);
+
+    WriteUint8(priv->i2cProgrammer, 0x090F, 0x00);
+    WriteUint8(priv->i2cProgrammer, 0x0910, 0x00);
+
+    WriteUint8(priv->i2cProgrammer, 0x0911, 0x01);
+    WriteUint8(priv->i2cProgrammer, 0x0912, 0x01);
+
+    status = 0;
+
+    return status;
+}
+EXPORT_SYMBOL(maxim96712_video_map_to_mipi_ctl);
+
+
+void test_default(struct device *dev)
+{
+    max96712 *priv = dev_get_drvdata(dev);
+
+    // WriteUint8(priv->i2cProgrammer, 0x06, 0x11);
+    // WriteUint8(priv->i2cProgrammer, 0x10, 0x22);
+    // WriteUint8(priv->i2cProgrammer, 0x18, 0x01);
+    usleep_range(10000, 10000);
+    //mipi set
+    WriteUint8(priv->i2cProgrammer, 0x8a0, 0x04);
+    WriteUint8(priv->i2cProgrammer, 0x8a2, 0xf0);
+    WriteUint8(priv->i2cProgrammer, 0x8a3, 0xe4);
+    WriteUint8(priv->i2cProgrammer, 0x8a4, 0xe4);
+    WriteUint8(priv->i2cProgrammer, 0x90a, 0xc0);
+    WriteUint8(priv->i2cProgrammer, 0x94a, 0xc0);
+    WriteUint8(priv->i2cProgrammer, 0x98a, 0xc0);
+    WriteUint8(priv->i2cProgrammer, 0x9ca, 0xc0);
+    WriteUint8(priv->i2cProgrammer, 0x1c00, 0xf4);
+    WriteUint8(priv->i2cProgrammer, 0x1d00, 0xf4);
+    WriteUint8(priv->i2cProgrammer, 0x1e00, 0xf4);
+    WriteUint8(priv->i2cProgrammer, 0x1f00, 0xf4);
+    WriteUint8(priv->i2cProgrammer, 0x415, 0x28);
+    WriteUint8(priv->i2cProgrammer, 0x418, 0x28);
+    WriteUint8(priv->i2cProgrammer, 0x41b, 0x28);
+    WriteUint8(priv->i2cProgrammer, 0x41e, 0x28);
+    WriteUint8(priv->i2cProgrammer, 0x1c00, 0xf5);
+    WriteUint8(priv->i2cProgrammer, 0x1d00, 0xf5);
+    WriteUint8(priv->i2cProgrammer, 0x1e00, 0xf5);
+    WriteUint8(priv->i2cProgrammer, 0x1f00, 0xf5); 
+
+}
+EXPORT_SYMBOL(test_default);
 /************************************************************************************************************/
-
-
 static const struct i2c_device_id max96712_id[] = {
 	{ "max96712", 0 },
 	{ },
@@ -508,11 +699,75 @@ static struct regmap_config max96712_regmap_config = {
 	.cache_type = REGCACHE_RBTREE,
 };
 
+int maxim96712_set_i2c_ctl_port(max96712 *priv)
+{
+    int status = 0;
+    I2CPortMAX96712 i2cPort = priv->i2cPort;
+    int i;
+
+    for (i = 0; i < MAX96712_MAX_NUM_LINK; i++) {
+        if (MAX96712_IS_GMSL_LINK_SET(priv->linkMask, i)) {
+            if (GMSL1_MODE == priv->gmslMode[i]) {
+                ACCESS_ONE_REG_FIELD_RET_ERR(REG_FIELD_I2C_PORT_GMSL1_PHY_A + i,    \
+                                (i2cPort == MAX96712_I2CPORT_0) ? 0u : 1u,  \
+                                REG_READ_MOD_WRITE_MODE);
+            } else if (IsGMSL2Mode(priv->gmslMode[i])) {
+                /* Disable connection from both port 0/1 */
+                ACCESS_ONE_REG_FIELD_RET_ERR(REG_FIELD_DIS_REM_CC_A + i,
+                                             0x3u,
+                                             REG_READ_MOD_WRITE_MODE);
+
+                /* Select port 0 or 1 over the link */
+                ACCESS_ONE_REG_FIELD_RET_ERR(REG_FIELD_SEC_XOVER_SEL_PHY_A + i,
+                                             (MAX96712_I2CPORT_0 == i2cPort) ? 0u : 1u,
+                                             REG_READ_MOD_WRITE_MODE);
+
+                /* Enable connection from port 0 or 1 */
+                ACCESS_ONE_REG_FIELD_RET_ERR(REG_FIELD_DIS_REM_CC_A + i,
+                                             (MAX96712_I2CPORT_0 == i2cPort) ? 2u : 1u,
+                                             REG_READ_MOD_WRITE_MODE);
+            }
+        }
+
+        /* Update I2C slave timeout */
+        if (i2cPort == MAX96712_I2CPORT_0) {
+            ACCESS_ONE_REG_FIELD_RET_ERR(REG_FIELD_SLV_TO_P0_A + i,
+                                         0x5, /* 16 ms timeout. This value is less than I2C_INTREG_SLV_0_TO */
+                                         REG_READ_MOD_WRITE_MODE);
+        } else if (i2cPort == MAX96712_I2CPORT_1)  {
+            ACCESS_ONE_REG_FIELD_RET_ERR(REG_FIELD_SLV_TO_P1_A + i,
+                                         0x5, /* 16 ms timeout. This value is less than I2C_INTREG_SLV_1_TO */
+                                         REG_READ_MOD_WRITE_MODE);
+        } else {
+            return -EINVAL;
+        }
+    }
+
+    return status;
+}
+
+int read_property_u32(struct device_node *node, const char *name, u32 *value)
+{
+	const char *str;
+	int err = 0;
+
+	err = of_property_read_string(node, name, &str);
+	if (err)
+		return -ENODATA;
+
+	err = kstrtou32(str, 10, value);
+	if (err)
+		return -EFAULT;
+
+	return 0;
+}
+
 int max96712_parse_dt(struct i2c_client *client, max96712 *priv)
 {
 	struct device_node *node = client->dev.of_node;
 	const struct of_device_id *match;
 	const char *str_value;
+    u32 value;
 	const char *gmsl_mode[MAX96712_MAX_NUM_LINK];
 	int err;
 	int i;
@@ -536,12 +791,24 @@ int max96712_parse_dt(struct i2c_client *client, max96712 *priv)
 	}
 	if (!strcmp(str_value, "2x4")) {
 		priv->csi_mode = MAX96712_CSI_MODE_2X4;
+        for (i = 0; i < MAX96712_MAX_NUM_PHY; i++) {
+            priv->phylines[i] = 4;
+        }
 	} else if (!strcmp(str_value, "4x2")) {
 		priv->csi_mode = MAX96712_CSI_MODE_4X2;
+        for (i = 0; i < MAX96712_MAX_NUM_PHY; i++) {
+            priv->phylines[i] = 2;
+        }
 	} else if (!strcmp(str_value, "1x4a_22")) {
 		priv->csi_mode = MAX96712_CSI_MODE_1X4A_22;
+        for (i = 0; i < MAX96712_MAX_NUM_PHY; i++) {
+            priv->phylines[i] = 4;
+        }
 	} else if (!strcmp(str_value, "1x4b_22")) {
 		priv->csi_mode = MAX96712_CSI_MODE_1X4B_22;
+        for (i = 0; i < MAX96712_MAX_NUM_PHY; i++) {
+            priv->phylines[i] = 2;
+        }
 	}
 	else {
 		MAX96712_ERR("invalid csi mode\n");
@@ -586,6 +853,55 @@ int max96712_parse_dt(struct i2c_client *client, max96712 *priv)
 	}
 /*********************************************************************************/
 
+/***********************set i2c control port**************************************/
+	err = read_property_u32(node, "i2cport", &value);
+	if (err < 0) {
+		MAX96712_ERR("i2cport property not found\n");
+		return err;
+	}
+    switch (value)
+    {
+    case 0:
+        priv->i2cPort = MAX96712_I2CPORT_0;
+        break;
+    case 1:
+        priv->i2cPort = MAX96712_I2CPORT_1;
+        break;
+    case 2:
+        priv->i2cPort = MAX96712_I2CPORT_2;
+        break;
+    default:
+        MAX96712_ERR("not match i2cPort");
+        break;
+    }
+/*********************************************************************************/
+
+/***********************select CSI control port***********************************/
+    err = read_property_u32(node, "txport", &value);
+	if (err < 0) {
+		MAX96712_ERR("txport property not found\n");
+		return err;
+	}
+    switch (value)
+    {
+    case 0:
+        priv->txPort  = MIPI_CSI_Controller_0;
+        break;
+    case 1:
+        priv->txPort  = MIPI_CSI_Controller_1;
+        break;
+    case 2:
+        priv->txPort  = MIPI_CSI_Controller_2;
+        break;
+    case 3:
+        priv->txPort  = MIPI_CSI_Controller_3;
+        break;
+    default:
+        MAX96712_ERR("not match txPort");
+        break;
+    }
+/*********************************************************************************/
+
 /***********************reset gpio************************************************/
 	priv->reset_gpio = of_get_named_gpio(node, "reset-gpios", 0);
 	if (priv->reset_gpio < 0) {
@@ -615,6 +931,7 @@ int max96712_chip_init(max96712 *priv)
 done:
 	return status;
 }
+
 static int max96712_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	max96712 *priv;
@@ -646,6 +963,12 @@ static int max96712_probe(struct i2c_client *client, const struct i2c_device_id 
         MAX96712_ERR("unable to init max96712\n");
         return -EFAULT;
     }
+
+    err = maxim96712_set_i2c_ctl_port(priv);
+    if (err) {
+        MAX96712_ERR("set i2c control port failed\n");
+        return -EFAULT;
+    }    
 
 	//set default power down
 	priv->power_status = false;

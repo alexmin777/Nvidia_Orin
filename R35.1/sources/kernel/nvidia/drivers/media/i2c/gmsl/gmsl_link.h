@@ -17,10 +17,4 @@ typedef enum {
     LINK_LOCK_MAX,
 } LinkLockType;
 
-typedef enum {
-    LINK_UNLOCKED,
-    LINK_LOCKED,
-    LINK_LOCK_INVALID,
-} LinkLockStatus;
-
 #endif // __GMSL_LINK_H
